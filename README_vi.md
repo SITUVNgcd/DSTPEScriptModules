@@ -1,7 +1,7 @@
 # DSTPEScriptModules
 Trình nạp mô-đun lệnh kịch bản cho Don't Starve Together Pocket Edition
 
-<div align=center">
+<div align="center">
 
 | [English](README.md) | **Tiếng Việt**
 | --- | --- |

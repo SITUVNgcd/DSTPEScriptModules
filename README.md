@@ -1,7 +1,7 @@
 # DSTPEScriptModules
 Script modules loader for Don't Starve Together Pocket Edition
 
-<div align=center">
+<div align="center">
 
 | **English** | [Tiếng Việt](README_vi.md)
 | --- | --- |
