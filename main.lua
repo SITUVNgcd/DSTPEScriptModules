@@ -1,4 +1,4 @@
-
+print("DSTPESM: Loading main module")
 
 
 
