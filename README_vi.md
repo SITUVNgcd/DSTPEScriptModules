@@ -1,10 +1,12 @@
 # DSTPEScriptModules
 Trình nạp mô-đun lệnh kịch bản cho Don't Starve Together Pocket Edition
 
-<p align=center">
+<div align=center">
+
 | [English](README.md) | **Tiếng Việt**
 | --- | --- |
-</p>
+
+</div>
 
 ## Cách để nạp mô-đun
 Sao chép đoạn lệnh kịch bản lua bên dưới, dán vào bảng điều khiển lệnh trong trò chơi và chạy nó.
