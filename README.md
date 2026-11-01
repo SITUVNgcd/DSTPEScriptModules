@@ -1,8 +1,10 @@
 # DSTPEScriptModules
 Script modules loader for Don't Starve Together Pocket Edition
 
+<p align=center">
 | **English** | [Tiếng Việt](README_vi.md)
 | --- | --- |
+</p>
 
 ## How to load module
 Copy lua script below, paste to ingame console and run it.
