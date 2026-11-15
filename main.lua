@@ -21,6 +21,7 @@ end
 
 if not DSTPESM then
   DSTPESM = {}
+  DSTPESM.old = {}
   
   SVNWidget = Widget("SVNWidget")
   SVNWidget:SetVAnchor(ANCHOR_MIDDLE)
@@ -28,6 +29,9 @@ if not DSTPESM then
   SVNWidget:SetScaleMode(SCALEMODE_FILLSCREEN)
   TheFrontEnd.screenroot:AddChild(SVNWidget)
   DSTPESM.SVNWidget = SVNWidget
+  
+  local SVNPrefix, SVNPrefixRoot, SVNPrefixPwd = "$", "^/", "^%.?%.?/"
+  local SVNRoot = "https://raw.githubusercontent.com/SITUVNgcd/DSTPEScriptModules/main/"
   
   local clone = function(original, seen)
     if type(original) ~= 'table' then 
@@ -59,49 +63,103 @@ if not DSTPESM then
     branch = "main",
     name = "main"
   }
-  local patterns = {
-    {
-      pattern = "^situvn://(.-)(%.lua)?$",
-      group = {name = 1}
-      raw = "https://raw.githubusercontent.com/SITUVNgcd/DSTPEScriptModules/min/{name}.lua",
-      name = "situvn://{name}"
-    },
-    {
-      pattern = "^github://(.-)/(.-)/(.-)/(.-)(%.lua)?$",
-      raw = "https://raw.githubusercontent.com/{user}/{repo}/{branch}/{name}.lua",
-      name = "github://{user}/{repo}/{branch}/{name}"
-    },
-    {
-      pattern = "^https?://github.com/(.-)/(.-)/blob/(.-)/(.-)(%.lua)?$",
-      raw = "https://raw.githubusercontent.com/{user}/{repo}/{branch}/{name}.lua",
-      name = "github://{user}/{repo}/{branch}/{name}"
-    },
-    {
-      pattern = "^https?://gist.github.com/(.-)/(.-)(%.lua)?$",
-      group = {user = 1, name = 2},
-      raw = "https://gist.githubusercontent.com/{user}/{name}",
-      name = "github://{user}/{repo}/{branch}/{name}"
-    },
-    {
-      pattern = "^https?://gist.githubusercontent.com/(.-)/(.-)(%.lua)?$",
-      group = {user = 1, name = 2},
-      raw = "https://gist.githubusercontent.com/{user}/{name}",
-      name = "github://{user}/{repo}/{branch}/{name}"
-    },
-    {
-      pattern = "^gitlab://(.-)/(.-)/(.-)/(.-)(%.lua)?$",
-      raw = "https://gitlab.com/{user}/{repo}/-/raw/{branch}/{name}",
-      name = "gitlab://{user}/{repo}/{branch}/{name}"
-    },
-    {
-      pattern = "^bitbucket://(.-)/(.-)/(.-)/(.-)(%.lua)?$",
-      raw = "https://bitbucket.org/{user}/{repo}/raw/{branch}/{name}",
-      name = "bitbucket://{user}/{repo}/{branch}/{name}"
+  local uris = {
+    group = {user = 1, repo = 2, branch = 3, name = 4},
+    schemes = {
+      situvn = {
+        name = "situvn:{name}"
+        url = "https://raw.githubusercontent.com/SITUVNgcd/DSTPEScriptModules/main/{name}.lua",
+        group = {name = 1}
+        patterns = {
+          "^situvn:(.-)%.lua$",
+          "^situvn:(.-)$",
+          "^https://github%.com/SITUVNgcd/DSTPEScriptModules/blob/main/(.-)%.lua$",
+          "^https://github%.com/SITUVNgcd/DSTPEScriptModules/blob/main/(.-)$",
+          "^https://raw%.githubusercontent%.com/SITUVNgcd/DSTPEScriptModules/main/(.-)%.lua$",
+          "^https://raw%.githubusercontent%.com/SITUVNgcd/DSTPEScriptModules/main/(.-)$"
+        }
+      },
+      github = {
+        name = "github:{user}/{repo}/{branch}/{name}",
+        url = "https://raw.githubusercontent.com/{user}/{repo}/{branch}/{name}.lua",
+        patterns = {
+          "^github:(.-)/(.-)/(.-)/(.-)%.lua$",
+          "^github:(.-)/(.-)/(.-)/(.-)$",
+          "^https?://raw%.githubusercontent%.com/(.-)/(.-)/(.-)/(.-)%.lua$",
+          "^https?://raw%.githubusercontent%.com/(.-)/(.-)/(.-)/(.-)$",
+          "^https?://github%.com/(.-)/(.-)/blob/(.-)/(.-)%.lua$",
+          "^https?://github%.com/(.-)/(.-)/blob/(.-)/(.-)$"
+        }
+      },
+      gist = {
+        name = "gist:{user}/{name}",
+        url = "https://gist.githubusercontent.com/{user}/{name}",
+        group = {user = 1, name = 2}
+        patterns = {
+          "^gist:(.-)/(.-)$",
+          "^https?://gist%.github%.com/(.-)/(.-)$",
+          "^https?://gist%.githubusercontent%.com/(.-)/(.-)$"
+        }
+      },
+      gitlab = {
+        name = "gitlab:{user}/{repo}/{branch}/{name}",
+        url = "https://gitlab.com/{user}/{repo}/-/raw/{branch}/{name}.lua",
+        patterns = {
+          "^gitlab:(.-)/(.-)/(.-)/(.-)%.lua$",
+          "^gitlab:(.-)/(.-)/(.-)/(.-)$",
+          "^https?://gitlab%.com/(.-)/(.-)/(.-)/(.-)%.lua$",
+          "^https?://gitlab%.com/(.-)/(.-)/(.-)/(.-)$",
+          "^https?://gitlab%.com/(.-)/(.-)/%-/raw/(.-)/(.-)%.lua$",
+          "^https?://gitlab%.com/(.-)/(.-)/%-/raw/(.-)/(.-)$",
+        }
+      },
+      bitbucket = {
+        name = "bitbucket:{user}/{repo}/{branch}/{name}",
+        url = "https://bitbucket.org/{user}/{repo}/raw/{branch}/{name}.lua",
+        patterns = {
+          "^bitbucket:(.-)/(.-)/(.-)/(.-)%.lua$",
+          "^bitbucket:(.-)/(.-)/(.-)/(.-)$",
+          "^https?://bitbucket%.org/(.-)/(.-)/(.-)/(.-)%.lua$",
+          "^https?://bitbucket%.org/(.-)/(.-)/(.-)/(.-)$",
+          "^https?://bitbucket%.org/(.-)/(.-)/raw/(.-)/(.-)%.lua$",
+          "^https?://bitbucket%.org/(.-)/(.-)/raw/(.-)/(.-)$"
+        }
+      },
+      http = {
+        name = "{url}",
+        url = "{url}",
+        prefix = "^https?://",
+        group = {url = 1}
+        patterns = {
+          "^(.)$"
+        }
+      },
+      ["."] = {
+        name = "{PWD}/{name}",
+        url = "{PWD}/{name}",
+        prefix = "^%.%.?/",
+        group = {name = 1},
+        patterns = {
+          "^%.%.?/(.)$"
+        }
+      }
     }
   }
   
+  local valNil = function(val)
+    return val == nil
+  end
+  
+  local valStr = function(str)
+    return not valNil(str) and type(str) == "string"
+  end
+  
+  local strEmpty = function(str)
+    return valStr(str) and #str == 0
+  end
+  
   local validStr = function(str)
-    return str and type(str) == "string" and #str > 0
+    return not strEmpty(str)
   end
   
   local currentModule = function()
@@ -109,49 +167,95 @@ if not DSTPESM then
     return info and info.source
   end
   
-  local extract = function(name, lua)
-    local data, pat, res, grp = {}
-    for k, v in pairs(patterns) do
-      if validStr(v.pattern) and validStr(v.raw) then
-        res = {name:match(v.pattern)}
-        if #res > 0 and res[1] then
-          grp = v.group
-          for i, n in pairs(dat) do
-            data[n] = res[grp and grp[i] or i] or "_"
-          end
-          pat = v
-          break
-        end
+  local resolveUri = function(uri)
+    local parent
+    if uri:find(SVNPrefixRoot) == 1 then
+      parent = SVNRoot
+      uri = uri:sub(2)
+    elseif uri:find(SVNPrefixPwd) == 1 then
+      local pwd = currentModule()
+      if pwd:find(SVNPrefix, nil, true) == 1 then
+        parent = pwd:sub(2):gsub("[^/]+$", "")
       end
     end
-    if type(lua) ~= "boolean" or lua then
-      data.name = data.name .. ".lua"
+    if parent then
+      uri = parent:gsub("[^/]$", "%1/") .. uri
     end
-    return data, pat
+    local names, wrd = {}, ""
+    for c in uri:gmatch(".") do
+      if c ~= "/" then
+        if not validStr(wrd) then wrd = "" end
+        wrd = wrd .. c
+      else
+        table.insert(names, wrd)
+        wrd = ""
+      end
+    end
+    if validStr(wrd) then
+      table.insert(names, wrd)
+    end
+    local paths, m = {}
+    for _, v in pairs(names) do
+      m = v:match("^%.%.?$")
+      if m then
+        if m == ".." and #paths > 1 then
+          table.remove(paths)
+        end
+      else
+        table.insert(paths, v)
+      end
+    end
+    uri = ""
+    for _, v in pairs(paths) do
+      uri = uri .. "/" .. v 
+    end
+    return uri
   end
   
-  local dat = {"user", "repo", "branch", "name"}
-  local parse = function(name)
-    local data, pat = extract(name)
-    if data.name then
-      return namedFormat(pat.url, data), namedFormat(pat.name, data)
+  local parsePattern = function(name, pat, grp)
+    if type(pat) == "table" then
+      if not pat.pattern then return nil end
+      grp = pat.group or grp
+      pat = pat.pattern
     end
-    if name:find("^https?://") == 1 then
-      return name, name
-    end
-    local cur = currentModule() -- BUG BUG BUG
-    if cur:find("^%$") == 1 then
-      cur = cur:sub(2, #cur):gsub("[^/]+$", "")
-      local data, pat = extract(cur)
-      if data.name then
-        return namedFormat(pat.url, data), namedFormat(pat.name, data)
+    local res = {name:match(pat)}
+    if res and #res > 0 then
+      local vals = {}
+      for k, v in pairs(grp) do
+        vals[k] = res[v]
       end
+      return vals
     end
     return nil
   end
   
+  local parseScheme = function(name, sch, grp){
+    if sch.prefix and name:find(sch.prefix) ~= 1 then return nil end
+    local pat, vals = sch.patterns
+    grp = sch.group or grp 
+    for k, v in pairs(pat) do
+      vals = parsePattern(v)
+      if res then
+        return {name = sch.name, url = sch.url, vals = vals}
+      end
+    end
+    return nil
+  }
+  
+  local parseUri = function(name)
+    if not uris then return nil end
+    local grp, data = uris.group
+    for k, v in pairs(uris.schemes) do
+      data = parseScheme(mame, v, grp)
+      if data then
+        return {name = namedFormat(data.name, data.vals), url = namedFormat(data.url, data.vals)}
+      end
+    end
+    
+    return nil
+  end
   -- Synchronous
-  local query = function(url, method, data)
+  local queryUrl = function(url, method, data)
     local body, success, code, done = nil
     TheSim:QueryServer(url, function(b, s, c)
       body, success, code, done = b, s, c, true
@@ -161,13 +265,19 @@ if not DSTPESM then
     return body, success, code
   end
   
+  local getUrl = function(url, method, data)
+    local body, ok, code = queryUrl(url, method, data)
+    if body and ok and code == 200 then return body end
+    return nil
+  end
+  
   local loader = function(name)
     if not name then return nil end
-    local url, module = parse(name)
+    local url, module = parseUri(name)
     if not url then return nil end
-    local code = query(url)
-    if not code then return nil end
-    local fn, err = loadstring(code, "$" .. module)
+    local fnstr = getUrl(url)
+    if not fnstr then return nil end
+    local fn, err = loadstring(fnstr, SVNPrefix .. module)
     if not fn then return nil end
     return fn
   end
@@ -175,7 +285,7 @@ if not DSTPESM then
   
   local packageReload = false
   requireReload = function(r)
-    packageReload = r or true
+    packageReload = type(r) == "boolean" and r or true
   end
   
   local R = require
@@ -186,26 +296,26 @@ if not DSTPESM then
     end
     return R(pname or name)
   end
-  DSTPESM.require = R
+  DSTPESM.old.require = R
   
   local PS = TheFrontEnd.PushScreen
   TheFrontEnd.PushScreen = function(self, ...)
     PS(self, ...)
     SVNWidget.MoveToFront()
   end
-  DSTPESM.OldPushScreen = PS
+  DSTPESM.old.PushScreen = PS
   local IS = TheFrontEnd.InsertScreenAtIndex
   TheFrontEnd.InsertScreenAtIndex = function(self, ...)
     IS(self, ...)
     SVNWidget.MoveToFront()
   end
-  DSTPESM.OldInsertScreenAtIndex = IS
+  DSTPESM.old.InsertScreenAtIndex = IS
   local UT = TheFrontEnd.InsertScreenUnderTop
   TheFrontEnd.InsertScreenUnderTop = function(self, ...)
     UT(self, ...)
     SVNWidget.MoveToFront()
   end
-  DSTPESM.OldInsertScreenUnderTop = UT
+  DSTPESM.old.InsertScreenUnderTop = UT
   
 end
 
