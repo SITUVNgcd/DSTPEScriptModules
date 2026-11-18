@@ -3,7 +3,7 @@ git add -A
 if [ $? -eq 0 ]; then
   m="$(date +%Y%m%d_%H%M%S)"
   if [ "$1" != "" ]; then
-    m="$m $1"
+    m="$1"
   fi
   if [ "$2" != "" ]; then
     git commit -m "$m" -m "$2"
